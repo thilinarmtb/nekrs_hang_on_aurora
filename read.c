@@ -2,7 +2,15 @@
 #include <stdlib.h>
 #include <gslib.h>
 
-static int read_ids(slong **ids, const char *fname, const struct comm *c) {
+static int setup_gs(slong *ids, size_t size1, size_t size2,
+    const struct comm *c) {
+  struct gs_data *gsh = gs_setup(ids, size1 + size2, c, 0, gs_pairwise, 0);
+  gs_free(gsh);
+  return 0;
+}
+
+static int read_ids(slong **ids, size_t *s1, size_t *s2, const char *fname,
+    const struct comm *c) {
   MPI_File file;
   int err = MPI_File_open(c->c, fname, MPI_MODE_RDONLY, MPI_INFO_NULL, &file);
   if (err) goto print_error_and_exit;
@@ -30,8 +38,8 @@ static int read_ids(slong **ids, const char *fname, const struct comm *c) {
   fflush(stdout);
 
   // Write the ids
-  size_t size1 = header[1 - (c->id > 0)];
-  size_t size2 = header[2 - (c->id > 0)];
+  size_t size1 = *s1 = header[1 - (c->id > 0)];
+  size_t size2 = *s2 = header[2 - (c->id > 0)];
   rsize = sizeof(slong) * (size1 + size2);
 
   in = rsize;
@@ -48,7 +56,7 @@ print_error_and_exit:
     fprintf(stderr, "Error opening file: %s for writing\n", fname);
   fflush(stderr);
 
-  MPI_Abort(c->c, EXIT_FAILURE);
+  *ids = 0, *s1 = *s2 = 0;
 
   return 1;
 }
@@ -65,11 +73,13 @@ int main(int argc, char *argv[]) {
   comm_init(&c, MPI_COMM_WORLD);
 
   slong *ids = 0;
-  read_ids(&ids, argv[1], &c);
+  size_t size1, size2;
+  read_ids(&ids, &size1, &size2, argv[1], &c);
+
+  setup_gs(ids, size1, size2, &c);
+
   free(ids);
-
   comm_free(&c);
-
   MPI_Finalize();
 
   return 0;
