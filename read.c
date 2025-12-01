@@ -75,7 +75,7 @@ static int read_ids(slong **ids, size_t *s1, size_t *s2, const char *fname,
   // Write the ids
   size_t size1 = *s1 = header[1 - (c->id > 0)];
   size_t size2 = *s2 = header[2 - (c->id > 0)];
-  rsize = sizeof(slong) * (size1 + size2);
+  rsize = sizeof(slong) * (size1 + size2) * 2;
 
   in = rsize;
   comm_scan(out, c, gs_long, gs_add, &in, 1, wrk);
