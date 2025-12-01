@@ -2,10 +2,45 @@
 #include <stdlib.h>
 #include <gslib.h>
 
-static int setup_gs(slong *ids, size_t size1, size_t size2,
-    const struct comm *c) {
-  struct gs_data *gsh = gs_setup(ids, size1 + size2, c, 0, gs_pairwise, 0);
+static int renumber(slong *ids, size_t size1, size_t size2,
+    const struct comm *c, buffer *bfr) {
+  slong *mids = tcalloc(slong, size1 + 2 * size2);
+  slong *mnew = tcalloc(slong, size1 + 2 * size2);
+  slong *mcur = tcalloc(slong, size1);
+
+  const size_t size = size1 + size2;
+  for (uint i = 0; i < size; i++)
+    mids[i] = ids[i];
+
+  struct gs_data *gsh = gs_setup(mids, size1 + size2, c, 0, gs_pairwise, 0);
+
+  for (uint i = 0; i < size; i++)
+    mnew[i] = ids[size + i];
+
+  gs(mnew, gs_long, gs_min, 0, gsh, bfr);
+
+  sint changed;
+  do {
+    for (uint i = 0; i < size1; i++) mcur[i] = mnew[i];
+    for (uint i = 0; i < size2; i++) mids[size1 + size2 + i] = -mnew[size1 + i];
+
+    struct gs_data *gsh1 = gs_setup(mids, size + size2, c, 0, gs_pairwise, 0);
+    gs(mnew, gs_long, gs_min, 0, gsh1, bfr);
+    gs_free(gsh1);
+
+    for (uint i = 0; i < size2; i++) mnew[size1 + i] = mnew[size1 + size2 + i];
+    gs(mnew, gs_long, gs_min, 0, gsh, bfr);
+
+    changed = 0;
+    for (uint i = 0; i < size1; i++) changed += (mnew[i] != mcur[i]);
+
+    sint wrk;
+    comm_allreduce(c, gs_int, gs_max, &changed, 1, &wrk);
+  } while (changed);
+
+  free(mids), free(mnew), free(mcur);
   gs_free(gsh);
+
   return 0;
 }
 
@@ -76,10 +111,15 @@ int main(int argc, char *argv[]) {
   size_t size1, size2;
   read_ids(&ids, &size1, &size2, argv[1], &c);
 
-  setup_gs(ids, size1, size2, &c);
+  buffer bfr;
+  buffer_init(&bfr, 1024);
+  renumber(ids, size1, size2, &c, &bfr);
+  buffer_free(&bfr);
 
   free(ids);
+
   comm_free(&c);
+
   MPI_Finalize();
 
   return 0;
