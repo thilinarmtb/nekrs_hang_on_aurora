@@ -10,6 +10,9 @@ submit: hang
 run: hang
 	mpirun -np 12 ./hang ./con.co2
 
+format:
+	clang-format -i *.c
+
 clean:
 	$(RM) hang
 

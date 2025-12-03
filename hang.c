@@ -1,21 +1,19 @@
+#include <gslib.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <gslib.h>
 
 static int renumber(slong *ids, size_t size1, size_t size2,
-    const struct comm *c, buffer *bfr) {
+                    const struct comm *c, buffer *bfr) {
   slong *mids = tcalloc(slong, size1 + 2 * size2);
   slong *mnew = tcalloc(slong, size1 + 2 * size2);
   slong *mcur = tcalloc(slong, size1);
 
   const size_t size = size1 + size2;
-  for (uint i = 0; i < size; i++)
-    mids[i] = ids[i];
+  for (uint i = 0; i < size; i++) mids[i] = ids[i];
 
   struct gs_data *gsh = gs_setup(mids, size1 + size2, c, 0, gs_pairwise, 0);
 
-  for (uint i = 0; i < size; i++)
-    mnew[i] = ids[size + i];
+  for (uint i = 0; i < size; i++) mnew[i] = ids[size + i];
 
   gs(mnew, gs_long, gs_min, 0, gsh, bfr);
 
@@ -45,7 +43,7 @@ static int renumber(slong *ids, size_t size1, size_t size2,
 }
 
 static int read_ids(slong **ids, size_t *s1, size_t *s2, const char *fname,
-    const struct comm *c) {
+                    const struct comm *c) {
   MPI_File file;
   int err = MPI_File_open(c->c, fname, MPI_MODE_RDONLY, MPI_INFO_NULL, &file);
   if (err) goto print_error_and_exit;
