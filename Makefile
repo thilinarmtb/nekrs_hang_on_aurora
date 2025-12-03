@@ -5,7 +5,7 @@ GSLIB ?= ../gslib.git/install
 all: submit
 
 submit: hang
-	qsub ./s.bin
+	qsub ./submit
 
 run: hang
 	mpirun -np 12 ./hang ./con.co2
